@@ -35,10 +35,21 @@ def agregar_producto_nuevo():
     if nombre_producto in inventario_productos:
         print(f"Error: El producto '{nombre_producto}' ya existe en el inventario.")
         return
+    # Valida que el nombre solo contenga letras (se permiten espacios entre palabras)
+    elif not nombre_producto.replace(" ", "").isalpha():
+        print("Error: El nombre del producto solo debe contener letras, sin números ni símbolos.")
+        return
 
     try:
-        # Solicita el precio convirtiéndolo a tipo de dato decimal (float)
-        precio_producto = float(input("Ingrese el precio del producto: "))
+        # Solicita el precio como texto primero, para poder limpiarlo antes de convertirlo
+        precio_texto = input("Ingrese el precio del producto: ")
+
+        # Se quitan el símbolo $ y las comas de miles (por si el usuario escribe $1,500)
+        # para que la conversión a número no truene por caracteres no numéricos
+        precio_texto_limpio = precio_texto.replace("$", "").replace(",", "").strip()
+
+        # Convierte el texto ya limpio a tipo de dato decimal (float)
+        precio_producto = float(precio_texto_limpio)
         
         # Regla de negocio: El precio siempre debe ser mayor a 0
         if precio_producto <= 0:
