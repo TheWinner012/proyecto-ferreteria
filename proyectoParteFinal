@@ -7,6 +7,7 @@
 inventario_productos = {}
 
 # Lista para registrar el historial de ventas durante la sesión
+# Cada venta se guarda como tupla: (nombre_producto, cantidad, precio_unitario, total)
 registro_ventas_dia = []
 
 # Umbral de stock bajo (RF6): por debajo o igual a este valor se considera bajo
@@ -40,10 +41,21 @@ def agregar_producto_nuevo():
     if nombre_producto in inventario_productos:
         print(f"Error: El producto '{nombre_producto}' ya existe en el inventario.")
         return
+    # Valida que el nombre solo contenga letras (se permiten espacios entre palabras)
+    elif not nombre_producto.replace(" ", "").isalpha():
+        print("Error: El nombre del producto solo debe contener letras, sin números ni símbolos.")
+        return
 
     try:
-        # Solicita el precio convirtiéndolo a tipo de dato decimal (float)
-        precio_producto = float(input("Ingrese el precio del producto: "))
+        # Solicita el precio como texto primero, para poder limpiarlo antes de convertirlo
+        precio_texto = input("Ingrese el precio del producto: ")
+
+        # Se quitan el símbolo $ y las comas de miles (por si el usuario escribe $1,500)
+        # para que la conversión a número no truene por caracteres no numéricos
+        precio_texto_limpio = precio_texto.replace("$", "").replace(",", "").strip()
+
+        # Convierte el texto ya limpio a tipo de dato decimal (float)
+        precio_producto = float(precio_texto_limpio)
         
         # Regla de negocio: El precio siempre debe ser mayor a 0
         if precio_producto <= 0:
@@ -130,13 +142,10 @@ def vender_producto():
         # Descuenta la cantidad vendida del stock actual
         inventario_productos[nombre_producto]["stock"] -= cantidad_vendida
 
-        # Registra la venta en el historial del día
-        registro_ventas_dia.append({
-            "producto": nombre_producto,
-            "cantidad": cantidad_vendida,
-            "precio_unitario": precio_unitario,
-            "subtotal": subtotal_venta
-        })
+        # Registra la venta en el historial del día como tupla:
+        # (nombre_producto, cantidad, precio_unitario, total) — mismo formato que usan
+        # ver_ventas_dia() y calcular_total_vendido_dia()
+        registro_ventas_dia.append((nombre_producto, cantidad_vendida, precio_unitario, subtotal_venta))
 
         # Muestra el mensaje de confirmación con los datos de la venta
         print(f"¡Venta registrada! {cantidad_vendida} x {nombre_producto} = ${subtotal_venta:.2f}")
@@ -208,6 +217,52 @@ def reporte_stock_bajo():
         stock_item = datos_item["stock"]
         print(f"{nombre_item:<25} | ${precio_item:<9.2f} | {stock_item:<10} ⚠")
 
+def ver_ventas_dia():
+    # RF7: Ver ventas del día
+    # Entrada: ninguna (usa la lista global registro_ventas_dia)
+    # Proceso: recorre el registro de ventas de la sesión y las muestra en orden
+    # Salida: listado de ventas, o mensaje si aún no hay ninguna
+    print("\n--- VENTAS DEL DÍA ---")
+
+    # Si la lista de ventas está vacía, se avisa al usuario y se sale de la función
+    if not registro_ventas_dia:
+        print("Aún no se ha registrado ninguna venta en esta sesión.")
+        return
+
+    # Encabezados 
+    print(f"{'Producto':<25} | {'Cantidad':<10} | {'Precio unit.':<12} | {'Total':<10}")
+    print("-" * 65)
+
+    # Ciclo for que recorre cada venta registrada durante la sesión
+    for venta_registrada in registro_ventas_dia:
+        # Cada venta es una tupla: (nombre, cantidad, precio_unitario, total)
+        nombre_producto = venta_registrada[0]
+        cantidad_vendida = venta_registrada[1]
+        precio_unitario = venta_registrada[2]
+        total_venta = venta_registrada[3]
+
+        print(f"{nombre_producto:<25} | {cantidad_vendida:<10} | ${precio_unitario:<11.2f} | ${total_venta:<9.2f}")
+
+def calcular_total_vendido_dia():
+    # RF8: Total vendido en el día función CON retorno
+    # Entrada: ninguna (usa la lista global registro_ventas_dia)
+    # Proceso: suma el total de todas las ventas registradas en la sesión
+    # Salida: regresa un número decimal con el total acumulado
+    total_acumulado = 0.0  # Variable donde se va acumulando la suma de ventas
+
+    # Se recorre la lista de ventas sumando el total de cada una
+    for venta_registrada in registro_ventas_dia:
+        total_venta = venta_registrada[3]  # Posición 3 de la tupla = total de esa venta
+        total_acumulado = total_acumulado + total_venta  # Se acumula al total general
+
+    return total_acumulado  
+def mostrar_total_vendido_dia():
+    # Función auxiliar que llama a calcular_total_vendido_dia() y muestra el resultado
+    # Separa el cálculo (con retorno) de la presentación en pantalla
+    total_del_dia = calcular_total_vendido_dia()  # Se guarda el valor que regresa la función
+    print(f"\nTotal vendido en el día: ${total_del_dia:,.2f}")
+
+
 def guardar_inventario_archivo():
     # RF9: Guarda el inventario actual en un archivo de texto antes de salir del programa
     try:
@@ -265,6 +320,7 @@ def cargar_inventario_archivo():
         # Controla errores al leer o convertir los datos del archivo (archivo dañado, formato inválido, etc.)
         print(f"Error: No se pudo cargar el inventario. Detalle: {error_al_cargar}")
 
+
 def ejecutar_programa():
     # RF1: Controla la repetición continua del menú hasta que el usuario elija Salir
     opcion_seleccionada = ""
@@ -289,16 +345,17 @@ def ejecutar_programa():
         elif opcion_seleccionada == "5":
             reporte_stock_bajo()
         elif opcion_seleccionada == "6":
-            print("Función 'Ver ventas del día' pendiente de implementar (RF7).")
+            ver_ventas_dia()
         elif opcion_seleccionada == "7":
-            print("Función 'Ver total vendido en el día' pendiente de implementar (RF8).")
+            mostrar_total_vendido_dia()
         elif opcion_seleccionada == "8":
-            # RF9: Se guarda el inventario en el archivo justo antes de cerrar el programa
+            # RF9: Se guarda el inventario 
             guardar_inventario_archivo()
             print("Saliendo del programa...")
         else:
             # Mensaje en caso de que la opción ingresada no sea válida
             print("Opción no válida. Por favor, ingrese un número del 1 al 8.")
+
 
 # Punto de inicio para la ejecución del código
 if __name__ == "__main__":
