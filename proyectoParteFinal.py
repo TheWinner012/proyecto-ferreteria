@@ -30,16 +30,41 @@ def mostrar_menu_principal():
     print("8. Salir")
 
 
+def buscar_nombre_real_producto(nombre_ingresado):
+    # Función auxiliar: encuentra el nombre EXACTO como está guardado en el inventario,
+    # comparando sin importar si el usuario escribió mayúsculas o minúsculas.
+    # Se usa tanto al agregar (para detectar duplicados) como al vender un producto.
+    # Entrada: nombre_ingresado -> texto que escribió el usuario
+    # Salida: regresa el nombre tal como está guardado (para usarlo como llave del
+    # diccionario), o None si no se encontró ningún producto que coincida.
+    nombre_ingresado_normalizado = nombre_ingresado.strip().lower()
+
+    # Se recorre cada nombre guardado en el inventario para comparar sin distinguir mayúsculas
+    for nombre_guardado in inventario_productos:
+        if nombre_guardado.lower() == nombre_ingresado_normalizado:
+            return nombre_guardado  # Se regresa el nombre real, tal como está guardado
+
+    return None  # No se encontró ningún producto con ese nombre
+
+
 def agregar_producto_nuevo():
     # RF2: Registra productos nuevos
     print("\n--- AGREGAR NUEVO PRODUCTO ---")
-    
-    # Solicita el nombre del producto
-    nombre_producto = input("Ingrese el nombre del producto: ")
-    
-    # Valida si el producto ya existe para evitar duplicados en el inventario
-    if nombre_producto in inventario_productos:
-        print(f"Error: El producto '{nombre_producto}' ya existe en el inventario.")
+
+    # Solicita el nombre del producto y quita espacios sobrantes al inicio/final
+    # (evita que "Martillo" y "Martillo " con espacio se traten como productos distintos)
+    nombre_producto = input("Ingrese el nombre del producto: ").strip()
+
+    # Valida que el usuario no haya dejado el nombre vacío
+    if nombre_producto == "":
+        print("Error: El nombre del producto no puede estar vacío.")
+        return
+
+    # Valida si el producto ya existe, sin importar mayúsculas/minúsculas,
+    # usando la misma función que usa vender_producto()
+    nombre_ya_existente = buscar_nombre_real_producto(nombre_producto)
+    if nombre_ya_existente is not None:
+        print(f"Error: El producto '{nombre_ya_existente}' ya existe en el inventario.")
         return
     # Valida que el nombre solo contenga letras (se permiten espacios entre palabras)
     elif not nombre_producto.replace(" ", "").isalpha():
@@ -112,11 +137,14 @@ def vender_producto():
         return
 
     # Solicita el nombre del producto a vender
-    nombre_producto = input("Ingrese el nombre del producto a vender: ")
+    nombre_ingresado = input("Ingrese el nombre del producto a vender: ")
+
+    # Busca el nombre real del producto sin importar mayúsculas/minúsculas
+    nombre_producto = buscar_nombre_real_producto(nombre_ingresado)
 
     # Valida que el producto exista en el inventario
-    if nombre_producto not in inventario_productos:
-        print(f"Error: El producto '{nombre_producto}' no existe en el inventario.")
+    if nombre_producto is None:
+        print(f"Error: El producto '{nombre_ingresado}' no existe en el inventario.")
         return
 
     try:
@@ -170,12 +198,13 @@ def buscar_producto():
         print("Error: Debe ingresar un texto de búsqueda.")
         return
 
-    # Filtra los productos cuyo nombre contenga el texto ingresado
-    resultados_encontrados = {
-        nombre_item: datos_item
-        for nombre_item, datos_item in inventario_productos.items()
-        if texto_busqueda in nombre_item.lower()
-    }
+    # Filtra los productos cuyo nombre contenga el texto ingresado, usando un for
+    # normal en lugar de comprensión de diccionario (ya es insensible a mayúsculas
+    # porque ambos lados usan .lower())
+    resultados_encontrados = {}
+    for nombre_item, datos_item in inventario_productos.items():
+        if texto_busqueda in nombre_item.lower():
+            resultados_encontrados[nombre_item] = datos_item
 
     if not resultados_encontrados:
         print(f"No se encontraron productos que coincidan con '{texto_busqueda}'.")
@@ -198,24 +227,39 @@ def reporte_stock_bajo():
         print("El inventario actual está vacío.")
         return
 
-    # Filtra los productos con stock igual o menor al umbral
-    productos_stock_bajo = {
-        nombre_item: datos_item
-        for nombre_item, datos_item in inventario_productos.items()
-        if datos_item["stock"] <= UMBRAL_STOCK_BAJO
-    }
+    # Arma una lista con los productos de stock bajo, usando un for normal
+    # en lugar de comprensión de diccionario
+    productos_stock_bajo = []
+    for nombre_item, datos_item in inventario_productos.items():
+        if datos_item["stock"] <= UMBRAL_STOCK_BAJO:
+            productos_stock_bajo.append((nombre_item, datos_item))
 
     if not productos_stock_bajo:
         print("No hay productos con stock bajo en este momento.")
         return
 
-    # Muestra los productos con stock bajo, ordenados de menor a mayor stock
+    # Ordena la lista de menor a mayor stock con un ordenamiento burbuja simple,
+    # hecho con ciclos for (en vez de sorted() con lambda)
+    cantidad_productos = len(productos_stock_bajo)
+    for vuelta_actual in range(cantidad_productos):
+        for posicion in range(cantidad_productos - 1 - vuelta_actual):
+            stock_actual = productos_stock_bajo[posicion][1]["stock"]
+            stock_siguiente = productos_stock_bajo[posicion + 1][1]["stock"]
+
+            # Si el producto actual tiene más stock que el siguiente, se intercambian
+            if stock_actual > stock_siguiente:
+                producto_temporal = productos_stock_bajo[posicion]
+                productos_stock_bajo[posicion] = productos_stock_bajo[posicion + 1]
+                productos_stock_bajo[posicion + 1] = producto_temporal
+
+    # Muestra los productos con stock bajo, ya ordenados de menor a mayor stock
     print(f"{'Producto':<25} | {'Precio':<10} | {'Stock':<10}")
     print("-" * 50)
-    for nombre_item, datos_item in sorted(productos_stock_bajo.items(), key=lambda item: item[1]["stock"]):
+    for nombre_item, datos_item in productos_stock_bajo:
         precio_item = datos_item["precio"]
         stock_item = datos_item["stock"]
         print(f"{nombre_item:<25} | ${precio_item:<9.2f} | {stock_item:<10} ⚠")
+
 
 def ver_ventas_dia():
     # RF7: Ver ventas del día
@@ -243,6 +287,7 @@ def ver_ventas_dia():
 
         print(f"{nombre_producto:<25} | {cantidad_vendida:<10} | ${precio_unitario:<11.2f} | ${total_venta:<9.2f}")
 
+
 def calcular_total_vendido_dia():
     # RF8: Total vendido en el día función CON retorno
     # Entrada: ninguna (usa la lista global registro_ventas_dia)
@@ -255,7 +300,9 @@ def calcular_total_vendido_dia():
         total_venta = venta_registrada[3]  # Posición 3 de la tupla = total de esa venta
         total_acumulado = total_acumulado + total_venta  # Se acumula al total general
 
-    return total_acumulado  
+    return total_acumulado
+
+
 def mostrar_total_vendido_dia():
     # Función auxiliar que llama a calcular_total_vendido_dia() y muestra el resultado
     # Separa el cálculo (con retorno) de la presentación en pantalla
@@ -266,50 +313,55 @@ def mostrar_total_vendido_dia():
 def guardar_inventario_archivo():
     # RF9: Guarda el inventario actual en un archivo de texto antes de salir del programa
     try:
-        # Abre (o crea) el archivo en modo escritura, sobrescribiendo su contenido anterior
-        archivo_salida = open(ARCHIVO_INVENTARIO, "w")
+        # Se usa "with" para que el archivo se cierre automáticamente, incluso si
+        # ocurre un error a la mitad de la escritura
+        with open(ARCHIVO_INVENTARIO, "w") as archivo_salida:
+            # Recorre cada producto del inventario y lo escribe como una línea de texto
+            for nombre_item, datos_item in inventario_productos.items():
+                # Separa cada dato con una coma para poder leerlo después fácilmente
+                linea_producto = f"{nombre_item},{datos_item['precio']},{datos_item['stock']}\n"
+                archivo_salida.write(linea_producto)
 
-        # Recorre cada producto del inventario y lo escribe como una línea de texto
-        for nombre_item, datos_item in inventario_productos.items():
-            # Separa cada dato con una coma para poder leerlo después fácilmente
-            linea_producto = f"{nombre_item},{datos_item['precio']},{datos_item['stock']}\n"
-            archivo_salida.write(linea_producto)
-
-        # Cierra el archivo para asegurar que los datos queden guardados
-        archivo_salida.close()
         print(f"Inventario guardado correctamente en '{ARCHIVO_INVENTARIO}'.")
 
     except Exception as error_al_guardar:
         # Controla cualquier problema al escribir el archivo (permisos, disco lleno, etc.)
         print(f"Error: No se pudo guardar el inventario. Detalle: {error_al_guardar}")
 
+
 def cargar_inventario_archivo():
     # RF10: Carga el inventario guardado la última vez que se usó el programa, si existe
     try:
-        # Intenta abrir el archivo en modo lectura
-        archivo_entrada = open(ARCHIVO_INVENTARIO, "r")
+        # Se usa "with" para que el archivo se cierre automáticamente al terminar de leerlo
+        with open(ARCHIVO_INVENTARIO, "r") as archivo_entrada:
+            # Recorre cada línea del archivo, donde cada línea es un producto guardado
+            for linea_actual in archivo_entrada:
+                linea_limpia = linea_actual.strip()
 
-        # Recorre cada línea del archivo, donde cada línea es un producto guardado
-        for linea_actual in archivo_entrada:
-            linea_limpia = linea_actual.strip()
+                # Ignora líneas vacías (por ejemplo, la última línea del archivo)
+                if linea_limpia == "":
+                    continue
 
-            # Ignora líneas vacías (por ejemplo, la última línea del archivo)
-            if linea_limpia == "":
-                continue
+                # Se valida cada línea por separado: si una línea viene dañada,
+                # se omite solo esa línea y se sigue leyendo el resto del archivo
+                try:
+                    # Separa la línea en sus tres partes: nombre, precio y stock
+                    partes_linea = linea_limpia.split(",")
+                    nombre_producto = partes_linea[0]
+                    precio_producto = float(partes_linea[1])
+                    cantidad_stock = int(partes_linea[2])
 
-            # Separa la línea en sus tres partes: nombre, precio y stock
-            partes_linea = linea_limpia.split(",")
-            nombre_producto = partes_linea[0]
-            precio_producto = float(partes_linea[1])
-            cantidad_stock = int(partes_linea[2])
+                    # Reconstruye el producto dentro del diccionario principal
+                    inventario_productos[nombre_producto] = {
+                        "precio": precio_producto,
+                        "stock": cantidad_stock
+                    }
 
-            # Reconstruye el producto dentro del diccionario principal
-            inventario_productos[nombre_producto] = {
-                "precio": precio_producto,
-                "stock": cantidad_stock
-            }
+                except (ValueError, IndexError):
+                    # La línea no tiene el formato esperado (faltan datos o no son números)
+                    print(f"Aviso: se omitió una línea con formato inválido: '{linea_limpia}'")
+                    continue
 
-        archivo_entrada.close()
         print(f"Inventario cargado: {len(inventario_productos)} producto(s) recuperado(s) de '{ARCHIVO_INVENTARIO}'.")
 
     except FileNotFoundError:
@@ -317,7 +369,7 @@ def cargar_inventario_archivo():
         print("No se encontró un inventario guardado previamente. Se inicia con el inventario vacío.")
 
     except Exception as error_al_cargar:
-        # Controla errores al leer o convertir los datos del archivo (archivo dañado, formato inválido, etc.)
+        # Controla otros errores al abrir el archivo (permisos, archivo dañado, etc.)
         print(f"Error: No se pudo cargar el inventario. Detalle: {error_al_cargar}")
 
 
