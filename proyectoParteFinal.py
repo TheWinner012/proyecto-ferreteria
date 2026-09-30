@@ -16,7 +16,7 @@ ARCHIVO_INVENTARIO = "inventario_datos.txt"
 
 
 def mostrar_menu_principal():
-    # RF1: Muestra el menu 
+    # Muestra el menu 
     print("\n--- SISTEMA DE INVENTARIO Y VENTAS ---")
     print("1. Agregar producto")
     print("2. Consultar inventario")
@@ -44,7 +44,7 @@ def agregar_producto_nuevo():
     # Registra productos nuevos
     print("\n--- AGREGAR NUEVO PRODUCTO ---")
 
-    # Solicita el nombre del producto y quita espacios sobrantes al inicio/final
+    # Solicita el nombre del producto
     nombre_producto = input("Ingrese el nombre del producto: ").strip()
     
     if nombre_producto == "":
@@ -62,13 +62,12 @@ def agregar_producto_nuevo():
         return
 
     try:
-        # Solicita el precio como texto primero, para poder limpiarlo antes de convertirlo
         precio_texto = input("Ingrese el precio del producto: ")
 
         # Se quitan el símbolo $ y las comas de miles (por si el usuario escribe $1,500)
         precio_texto_limpio = precio_texto.replace("$", "").replace(",", "").strip()
 
-        # Convierte el texto ya limpio a tipo de dato decimal (float)
+        # Convierte el texto ya limpio a tipo de dato decimal
         precio_producto = float(precio_texto_limpio)
         
         if precio_producto <= 0:
@@ -150,11 +149,9 @@ def vender_producto():
         inventario_productos[nombre_producto]["stock"] -= cantidad_vendida
 
         # Registra la venta en el historial del día
-        # (nombre_producto, cantidad, precio_unitario, total) — mismo formato que usan
-        # ver_ventas_dia() y calcular_total_vendido_dia()
         registro_ventas_dia.append((nombre_producto, cantidad_vendida, precio_unitario, subtotal_venta))
 
-        # Muestra el mensaje de confirmación
+        # Muestra el mensaje
         print(f"Venta registrada {cantidad_vendida} x {nombre_producto} = ${subtotal_venta:.2f}")
         print(f"Stock restante de '{nombre_producto}': {inventario_productos[nombre_producto]['stock']}")
 
@@ -239,7 +236,7 @@ def ver_ventas_dia():
     # Ver ventas del día
     print("\n--- VENTAS DEL DÍA ---")
 
-    # Si la lista de ventas está vacía, se avisa al usuario y se sale de la función
+    # Si la lista de ventas está vacía, se avisa al usuario
     if not registro_ventas_dia:
         print("Aún no se ha registrado ninguna venta en esta sesión.")
         return
