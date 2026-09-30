@@ -11,7 +11,7 @@ registro_ventas_dia = []
 
 
 def mostrar_menu_principal():
-    # RF1: Muestra el menu 
+    #Muestra el menu 
     print("\n--- SISTEMA DE INVENTARIO Y VENTAS ---")
     print("1. Agregar producto")
     print("2. Consultar inventario")
@@ -24,7 +24,7 @@ def mostrar_menu_principal():
 
 
 def agregar_producto_nuevo():
-    # RF2: Registra productos nuevos
+    #Registra productos nuevos
     print("\n--- AGREGAR NUEVO PRODUCTO ---")
     
     # Solicita el nombre del producto
